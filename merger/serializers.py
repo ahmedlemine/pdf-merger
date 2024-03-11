@@ -1,5 +1,12 @@
+from django.contrib.auth.models import User
+
 from rest_framework import serializers
 from .models import Order, PdfFile
+
+class UserSerializer(serializers.ModelSerializer):    
+    class Meta:
+        model = User
+        fields = ['id']
 
 
 class PdfFileSerializer(serializers.ModelSerializer):
@@ -8,12 +15,10 @@ class PdfFileSerializer(serializers.ModelSerializer):
         fields = ["id", "order", "file", "is_merged"]
 
 
-class OrderSerializer(serializers.ModelSerializer):
-    pdf_files = PdfFileSerializer(
-        many=True,
-        read_only=True,
-    )
+class OrderSerializer(serializers.Serializer):
+    id = serializers.UUIDField(read_only=True)
+    user = UserSerializer(read_only=True)
+    is_completed = serializers.BooleanField(default=False)
 
-    class Meta:
-        model = Order
-        fields = ["id", "user", "is_completed", "pdf_files"]
+    def create(self, validated_data):
+        return Order.objects.create(**validated_data)

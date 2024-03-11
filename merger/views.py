@@ -13,11 +13,16 @@ def order_list(request):
         return Response(serializer.data)
 
     elif request.method == "POST":
-        serializer = OrderSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        user = request.user
+        if user.is_authenticated:
+            serializer = OrderSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save(user=user)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            content = {"error": "Unauthorized"}
+            return Response(content, status=status.HTTP_401_UNAUTHORIZED)
 
 
 @api_view(["get", "post"])
