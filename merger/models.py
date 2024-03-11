@@ -31,4 +31,4 @@ class PdfFile(models.Model):
         ordering = ["order"]
 
     def __str__(self):
-        return f"{self.id} - for order: {self.order}"
+        return str(self.id)
