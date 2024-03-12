@@ -4,7 +4,6 @@ from rest_framework.response import Response
 from .models import Order, PdfFile
 from .serializers import OrderSerializer, PdfFileSerializer
 
-from django.shortcuts import get_object_or_404
 
 @api_view(["get", "post"])
 def order_list(request):
