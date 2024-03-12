@@ -9,6 +9,9 @@ class Order(models.Model):
     user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
     date_created = models.DateTimeField(auto_now=True)
     is_completed = models.BooleanField(default=False)
+    download_url = models.CharField(max_length=250, blank=True, null=True)
+    is_downloaded = models.BooleanField(default=False)
+    is_archived = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["-date_created"]
@@ -20,10 +23,7 @@ class Order(models.Model):
 class PdfFile(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="pdf_files")
-    file = models.FileField(
-        upload_to="pdf_uploads",
-        help_text="PDF file",
-    )
+    file = models.FileField(upload_to="pdf_uploads")
     date_uploaded = models.DateTimeField(auto_now=True, editable=False)
     is_merged = models.BooleanField(default=False)
 

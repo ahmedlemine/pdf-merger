@@ -15,7 +15,9 @@ class UserSerializer(serializers.ModelSerializer):
 class OrderSerializer(serializers.Serializer):
     id = serializers.UUIDField(read_only=True)
     date_created = serializers.DateTimeField(read_only=True)
-    is_completed = serializers.BooleanField(default=False)
+    is_completed = serializers.BooleanField(default=False, read_only=True)
+    download_url = serializers.URLField(read_only=True)
+    is_downloaded = serializers.BooleanField(default=False, read_only=True)
     user = UserSerializer(read_only=True)
     pdf_files = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
 

@@ -8,4 +8,8 @@ urlpatterns = [
     path("orders/<uuid:id>/", views.order_detail, name="order-detail"),
     path("orders/files/<uuid:order_id>/", views.order_files, name="order-files"),
     path("orders/merge/<uuid:id>/", views.merge_order_files, name="order-merge"),
+    path(
+        "orders/download/<uuid:id>/", views.downlaod_merged_pdf, name="order-download"
+    ),
+    path("orders/delete/<uuid:id>/", views.order_delete, name="order-delete"),
 ]

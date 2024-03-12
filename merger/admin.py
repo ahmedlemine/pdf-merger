@@ -15,6 +15,7 @@ class OrderAdmin(admin.ModelAdmin):
         "user",
         "date_created",
         "is_completed",
+        "is_downloaded"
     )
 
     inlines = [PdfFileInline]

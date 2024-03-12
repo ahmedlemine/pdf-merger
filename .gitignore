@@ -337,3 +337,6 @@ static_cdn/
 
 # Django media folder
 media/
+
+
+.ruff_cache

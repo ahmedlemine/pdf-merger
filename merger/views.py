@@ -12,7 +12,7 @@ from .models import Order, PdfFile
 from .serializers import OrderSerializer, PdfFileSerializer
 
 
-@api_view(["get", "post"])
+@api_view(["GET", "POST"])
 def order_list(request):
     if request.method == "GET":
         orders = Order.objects.all()
@@ -32,7 +32,7 @@ def order_list(request):
             return Response(content, status=status.HTTP_401_UNAUTHORIZED)
 
 
-@api_view(["get"])
+@api_view(["GET"])
 def order_detail(request, id):
     try:
         order = Order.objects.get(id=id)
@@ -44,7 +44,7 @@ def order_detail(request, id):
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-@api_view(["get", "post"])
+@api_view(["GET", "POST"])
 def order_files(request, order_id):
     if request.method == "GET":
         try:
@@ -75,7 +75,7 @@ def order_files(request, order_id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(["get"])
+@api_view(["GET"])
 def merge_order_files(request, id):
     try:
         order = Order.objects.get(id=id)
@@ -102,7 +102,7 @@ def merge_order_files(request, id):
         merger.append(f.file)
 
     output_name = os.path.join(
-        settings.MEDIA_ROOT, f"merged_pdfs/{order.id}_merged.pdf"
+        settings.MEDIA_ROOT, f"merged_pdfs/merged_pdf_{order.id}.pdf"
     )
 
     try:
@@ -118,8 +118,49 @@ def merge_order_files(request, id):
         f.save()
 
     order.is_completed = True
+    order.download_url = output_name
     order.save()
 
-    merged_path = {"merged PDF": output_name}
+    content = {
+        "success": "files merged successfully. Use download link to download the merged PDF file"
+    }
+    return Response(content, status=status.HTTP_201_CREATED)
 
-    return Response(merged_path, status=status.HTTP_200_OK)
+
+@api_view(["GET"])
+def downlaod_merged_pdf(request, id):
+    try:
+        order = Order.objects.get(id=id)
+    except Order.DoesNotExist:
+        content = {"error": "order does not exist"}
+        return Response(content, status=status.HTTP_404_NOT_FOUND)
+
+    if not order.is_completed:
+        content = {"error": "order has not been merged yet"}
+        return Response(content, status=status.HTTP_400_BAD_REQUEST)
+
+    if order.is_archived:
+        content = {
+            "error": "order has already been downloaded and archived. Please create a new order"
+        }
+        return Response(content, status=status.HTTP_400_BAD_REQUEST)
+
+    order.is_archived = True
+    order.save()
+
+    content = {"download_url": order.download_url}
+    return Response(content, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+def order_delete(request, id):
+    if request.method == "POST":
+        try:
+            order = Order.objects.get(id=id)
+        except Order.DoesNotExist:
+            content = {"error": "order does not exist"}
+            return Response(content, status=status.HTTP_404_NOT_FOUND)
+
+        order.delete()
+        content = {"deleted": "successfully deleted."}
+        return Response(content, status=status.HTTP_204_NO_CONTENT)
