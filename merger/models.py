@@ -21,7 +21,7 @@ class PdfFile(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="pdf_files")
     file = models.FileField(
-        upload_to="media/pdf_uploads",
+        upload_to="pdf_uploads",
         help_text="PDF file",
     )
     date_uploaded = models.DateTimeField(auto_now=True, editable=False)

@@ -1,3 +1,10 @@
+import os
+
+from PyPDF2 import PdfMerger
+from PyPDF2.errors import PdfReadError
+
+from django.conf import settings
+
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -32,32 +39,87 @@ def order_detail(request, id):
     except Order.DoesNotExist:
         content = {"error": "order does not exist"}
         return Response(content, status=status.HTTP_404_NOT_FOUND)
+
     serializer = OrderSerializer(order)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @api_view(["get", "post"])
-def pdf_file_list(request, order_id):
+def order_files(request, order_id):
     if request.method == "GET":
         try:
             order = Order.objects.get(id=order_id)
         except Order.DoesNotExist:
             content = {"error": "order does not exist"}
             return Response(content, status=status.HTTP_404_NOT_FOUND)
-        
+
         pdf_files = PdfFile.objects.filter(order=order)
         serializer = PdfFileSerializer(pdf_files, many=True)
         return Response(serializer.data)
 
-
     elif request.method == "POST":
         try:
             order = Order.objects.get(id=order_id)
-            serializer = PdfFileSerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.save(order=order)
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Order.DoesNotExist:
             content = {"error": "order does not exist"}
             return Response(content, status=status.HTTP_404_NOT_FOUND)
+
+        if order.pdf_files.count() >= 5:
+            content = {"error": "you have reached the max files allowed in on merge."}
+            return Response(content, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = PdfFileSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(order=order)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["get"])
+def merge_order_files(request, id):
+    try:
+        order = Order.objects.get(id=id)
+    except Order.DoesNotExist:
+        content = {"error": "order does not exist"}
+        return Response(content, status=status.HTTP_404_NOT_FOUND)
+
+    if order.is_completed:
+        content = {
+            "error": "this order has already been completed. Please make a new order."
+        }
+        return Response(content, status=status.HTTP_400_BAD_REQUEST)
+
+    pdf_files = PdfFile.objects.filter(order=order)
+
+    if pdf_files.count() < 2:
+        content = {
+            "error": "not enough PDFs to merge. Please make sure you have added at least 2 PDF files."
+        }
+        return Response(content, status=status.HTTP_400_BAD_REQUEST)
+
+    merger = PdfMerger()
+    for f in pdf_files:
+        merger.append(f.file)
+
+    output_name = os.path.join(
+        settings.MEDIA_ROOT, f"merged_pdfs/{order.id}_merged.pdf"
+    )
+
+    try:
+        merger.write(output_name)
+    except PdfReadError:
+        content = {"error": "error reading PDF file"}
+        return Response(content, status=status.HTTP_400_BAD_REQUEST)
+
+    merger.close()
+
+    for f in pdf_files:
+        f.is_merged = True
+        f.save()
+
+    order.is_completed = True
+    order.save()
+
+    merged_path = {"merged PDF": output_name}
+
+    return Response(merged_path, status=status.HTTP_200_OK)
