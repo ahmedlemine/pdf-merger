@@ -12,42 +12,15 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ["id"]
 
 
-class OrderSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-
-    class Meta:
-        model = Order
-        fields = [
-            "id",
-            "date_created",
-            "is_completed",
-            "download_url",
-            "is_downloaded",
-            "is_archived",
-            "user",
-            "pdf_files",
-        ]
-        read_only_fields = [
-            "id",
-            "date_created",
-            "is_completed",
-            "download_url",
-            "is_downloaded",
-            "is_archived",
-            "user",
-            "pdf_files",
-        ]
-
-
 class PdfFileSerializer(serializers.ModelSerializer):
     class Meta:
         model = PdfFile
-        fields = '__all__'
+        fields = "__all__"
         read_only_fields = [
-            'id',
-            'order',
-            'is_merged',
-            'date_uploaded'
+            "id",
+            "order",
+            "is_merged",
+            "date_uploaded",
         ]
 
     def validate_file(self, file):
@@ -69,3 +42,32 @@ class PdfFileSerializer(serializers.ModelSerializer):
                 f"error: '{file.name}' file exeeds size limit."
             )
         return file
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    pdf_files = PdfFileSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Order
+        depth = 1
+        fields = [
+            "id",
+            "date_created",
+            "is_completed",
+            "download_url",
+            "is_downloaded",
+            "is_archived",
+            "user",
+            "pdf_files",
+        ]
+        read_only_fields = [
+            "id",
+            "date_created",
+            "is_completed",
+            "download_url",
+            "is_downloaded",
+            "is_archived",
+            "user",
+            "pdf_files",
+        ]

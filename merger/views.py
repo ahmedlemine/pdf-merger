@@ -46,10 +46,10 @@ def order_detail(request, id):
 
 
 @api_view(["GET", "POST"])
-def order_files(request, order_id):
+def order_files(request, id):
     if request.method == "GET":
         try:
-            order = Order.objects.get(id=order_id)
+            order = Order.objects.get(id=id)
         except Order.DoesNotExist:
             content = {"error": "order does not exist"}
             return Response(content, status=status.HTTP_404_NOT_FOUND)
@@ -60,17 +60,17 @@ def order_files(request, order_id):
 
     elif request.method == "POST":
         try:
-            order = Order.objects.get(id=order_id)
+            order = Order.objects.get(id=id)
         except Order.DoesNotExist:
             content = {"error": "order does not exist"}
             return Response(content, status=status.HTTP_404_NOT_FOUND)
 
         if order.is_completed:
             content = {
-            "error": "merge has already been completed and archived. Please create a new order"
+                "error": "merge has already been completed and archived. Please create a new order"
             }
             return Response(content, status=status.HTTP_400_BAD_REQUEST)
-        
+
         if order.pdf_files.count() >= 5:
             content = {"error": "you have reached the max files allowed in on merge."}
             return Response(content, status=status.HTTP_400_BAD_REQUEST)
