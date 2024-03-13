@@ -14,13 +14,14 @@ from .serializers import OrderSerializer, PdfFileSerializer
 
 @api_view(["GET", "POST"])
 def order_list(request):
+    user = request.user
     if request.method == "GET":
-        orders = Order.objects.all()
-        serializer = OrderSerializer(orders, many=True)
-        return Response(serializer.data)
+        if user.is_authenticated:
+            orders = Order.objects.filter(user=user)
+            serializer = OrderSerializer(orders, many=True)
+            return Response(serializer.data)
 
     elif request.method == "POST":
-        user = request.user
         if user.is_authenticated:
             serializer = OrderSerializer(data=request.data)
             if serializer.is_valid():
@@ -64,6 +65,12 @@ def order_files(request, order_id):
             content = {"error": "order does not exist"}
             return Response(content, status=status.HTTP_404_NOT_FOUND)
 
+        if order.is_completed:
+            content = {
+            "error": "merge has already been completed and archived. Please create a new order"
+            }
+            return Response(content, status=status.HTTP_400_BAD_REQUEST)
+        
         if order.pdf_files.count() >= 5:
             content = {"error": "you have reached the max files allowed in on merge."}
             return Response(content, status=status.HTTP_400_BAD_REQUEST)
@@ -85,7 +92,7 @@ def merge_order_files(request, id):
 
     if order.is_completed:
         content = {
-            "error": "this order has already been completed. Please make a new order."
+            "error": "this order has already been completed. Download merged PDF or make a new order."
         }
         return Response(content, status=status.HTTP_400_BAD_REQUEST)
 
