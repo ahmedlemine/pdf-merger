@@ -4,66 +4,77 @@ from PyPDF2 import PdfMerger
 from PyPDF2.errors import PdfReadError
 
 from django.conf import settings
+from django.shortcuts import get_object_or_404
 
-from rest_framework import status
+from rest_framework import generics, status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.generics import GenericAPIView
+from rest_framework.mixins import CreateModelMixin
+
+
+from .permissions import IsOwner, IsParentOwner
 from .models import Order, PdfFile
 from .serializers import OrderSerializer, PdfFileSerializer
 
 
-@api_view(["GET", "POST"])
-def order_list(request):
-    user = request.user
-    if request.method == "GET":
-        if user.is_authenticated:
-            orders = Order.objects.filter(user=user)
-            serializer = OrderSerializer(orders, many=True)
-            return Response(serializer.data)
+class Orders(generics.ListCreateAPIView):
+    """List orders that belong to the currently authenticated user, and create new orders for the user"""
 
-    elif request.method == "POST":
-        if user.is_authenticated:
-            serializer = OrderSerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.save(user=user)
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            content = {"error": "Unauthorized"}
-            return Response(content, status=status.HTTP_401_UNAUTHORIZED)
+    permission_classes = [IsAuthenticated, IsOwner]
+    serializer_class = OrderSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        return Order.objects.filter(user=user)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        return serializer.save(user=user)
 
 
-@api_view(["GET"])
-def order_detail(request, id):
-    try:
-        order = Order.objects.get(id=id)
-    except Order.DoesNotExist:
-        content = {"error": "order does not exist"}
-        return Response(content, status=status.HTTP_404_NOT_FOUND)
+class OrderDetail(generics.RetrieveDestroyAPIView):
+    """Show details of an order by its id"""
 
-    serializer = OrderSerializer(order)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    permission_classes = [IsAuthenticated, IsOwner]
+    serializer_class = OrderSerializer
+    queryset = Order.objects.all()
+
+    def get_object(self):
+        queryset = self.get_queryset()
+        obj = get_object_or_404(queryset, pk=self.kwargs["pk"])
+        self.check_object_permissions(self.request, obj)
+        return obj
 
 
-@api_view(["GET", "POST"])
-def order_files(request, id):
-    if request.method == "GET":
-        try:
-            order = Order.objects.get(id=id)
-        except Order.DoesNotExist:
-            content = {"error": "order does not exist"}
-            return Response(content, status=status.HTTP_404_NOT_FOUND)
+class OrderFilesList(generics.ListAPIView):
+    """List all files under order that belongs to the currently authenticated user"""
 
-        pdf_files = PdfFile.objects.filter(order=order)
-        serializer = PdfFileSerializer(pdf_files, many=True)
-        return Response(serializer.data)
+    permission_classes = [IsAuthenticated]
+    serializer_class = PdfFileSerializer
 
-    elif request.method == "POST":
-        try:
-            order = Order.objects.get(id=id)
-        except Order.DoesNotExist:
-            content = {"error": "order does not exist"}
-            return Response(content, status=status.HTTP_404_NOT_FOUND)
+    def get_queryset(self):
+        user = self.request.user
+        order = get_object_or_404(Order, pk=self.kwargs["pk"])
+        if order.user != user:
+            raise PermissionDenied
+        return PdfFile.objects.filter(order=order, order__user=user)
+
+
+class OrderFilesCreate(GenericAPIView, CreateModelMixin):
+    """Create (add) files for the order specified by its id"""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = PdfFileSerializer
+
+    def create(self, request, *args, **kwargs):
+        order = get_object_or_404(Order, id=self.kwargs["pk"])
+
+        if order.pdf_files.count() >= settings.MAX_MERGED_FILES_LIMIT:
+            content = {"error": "you have reached the max files allowed in on merge."}
+            return Response(content, status=status.HTTP_400_BAD_REQUEST)
 
         if order.is_completed:
             content = {
@@ -71,15 +82,33 @@ def order_files(request, id):
             }
             return Response(content, status=status.HTTP_400_BAD_REQUEST)
 
-        if order.pdf_files.count() >= 5:
-            content = {"error": "you have reached the max files allowed in on merge."}
-            return Response(content, status=status.HTTP_400_BAD_REQUEST)
+        serializer = self.get_serializer(data=request.data)
+        headers = self.get_success_headers(serializer.data)
+        super().create(self, request, *args, **kwargs)
+        return Response(
+            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )
 
-        serializer = PdfFileSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(order=order)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        order = get_object_or_404(Order, id=self.kwargs["pk"])
+        return serializer.save(order=order)
+
+
+class FileDelete(generics.DestroyAPIView):
+    """Delete file by its id"""
+
+    permission_classes = [IsAuthenticated, IsParentOwner]
+    serializer_class = PdfFileSerializer
+    queryset = PdfFile.objects.all()
+
+    def get_object(self):
+        queryset = self.get_queryset()
+        obj = get_object_or_404(queryset, pk=self.kwargs["pk"])
+        self.check_object_permissions(self.request, obj)
+        return obj
 
 
 @api_view(["GET"])
@@ -157,17 +186,3 @@ def downlaod_merged_pdf(request, id):
 
     content = {"download_url": order.download_url}
     return Response(content, status=status.HTTP_200_OK)
-
-
-@api_view(["POST"])
-def order_delete(request, id):
-    if request.method == "POST":
-        try:
-            order = Order.objects.get(id=id)
-        except Order.DoesNotExist:
-            content = {"error": "order does not exist"}
-            return Response(content, status=status.HTTP_404_NOT_FOUND)
-
-        order.delete()
-        content = {"deleted": "successfully deleted."}
-        return Response(content, status=status.HTTP_204_NO_CONTENT)

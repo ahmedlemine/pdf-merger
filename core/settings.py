@@ -128,3 +128,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 MEDIA_ROOT = "media/"
 MEDIA_URL = "media/"
+
+
+# PDF merger settings
+MAX_MERGED_FILES_LIMIT = 5
+MAX_PDF_FILE_SIZE = 2097152

@@ -1,5 +1,6 @@
 import magic
 
+from django.conf import settings
 from django.contrib.auth.models import User
 
 from rest_framework import serializers
@@ -35,7 +36,7 @@ class PdfFileSerializer(serializers.ModelSerializer):
                 f"error: '{file.name}' is not a PDF file. Please make sure to upload only PDF files."
             )
 
-        size_limit = 2097152
+        size_limit = settings.MAX_PDF_FILE_SIZE
 
         if file.size > size_limit:
             raise serializers.ValidationError(
