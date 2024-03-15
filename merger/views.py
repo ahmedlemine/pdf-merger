@@ -7,11 +7,11 @@ from django.conf import settings
 from django.shortcuts import get_object_or_404
 
 from rest_framework import generics, status
-from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import GenericAPIView
+from rest_framework.views import APIView
 from rest_framework.mixins import CreateModelMixin
 
 
@@ -69,27 +69,19 @@ class OrderFilesCreate(GenericAPIView, CreateModelMixin):
     permission_classes = [IsAuthenticated]
     serializer_class = PdfFileSerializer
 
-    def create(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         order = get_object_or_404(Order, id=self.kwargs["pk"])
 
         if order.pdf_files.count() >= settings.MAX_MERGED_FILES_LIMIT:
-            content = {"error": "you have reached the max files allowed in on merge."}
+            content = {"error": "you have reached the max files allowed in one merge."}
             return Response(content, status=status.HTTP_400_BAD_REQUEST)
 
         if order.is_completed:
             content = {
-                "error": "merge has already been completed and archived. Please create a new order"
+                "error": "merge has already been completed and archived. Please create a new order."
             }
             return Response(content, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = self.get_serializer(data=request.data)
-        headers = self.get_success_headers(serializer.data)
-        super().create(self, request, *args, **kwargs)
-        return Response(
-            serializer.data, status=status.HTTP_201_CREATED, headers=headers
-        )
-
-    def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
@@ -111,78 +103,82 @@ class FileDelete(generics.DestroyAPIView):
         return obj
 
 
-@api_view(["GET"])
-def merge_order_files(request, id):
-    try:
-        order = Order.objects.get(id=id)
-    except Order.DoesNotExist:
-        content = {"error": "order does not exist"}
-        return Response(content, status=status.HTTP_404_NOT_FOUND)
+class OrderMerge(APIView):
+    """Merge PDF files of an order"""
 
-    if order.is_completed:
+    permission_classes = [IsAuthenticated, IsOwner]
+
+    def get(self, request, *args, **kwargs):
+        order = get_object_or_404(Order, pk=self.kwargs["pk"])
+        obj = order
+        self.check_object_permissions(self.request, obj)
+
+        if order.is_completed:
+            content = {
+                "error": "this order has already been completed. Download merged PDF or make a new order."
+            }
+            return Response(content, status=status.HTTP_400_BAD_REQUEST)
+
+        pdf_files = PdfFile.objects.filter(order=order)
+
+        if pdf_files.count() < 2:
+            content = {
+                "error": "not enough PDFs to merge. Please make sure you have added at least 2 PDF files to merge."
+            }
+            return Response(content, status=status.HTTP_400_BAD_REQUEST)
+
+        merger = PdfMerger()
+        for f in pdf_files:
+            merger.append(f.file)
+
+        output_name = os.path.join(
+            settings.MEDIA_ROOT, f"merged_pdfs/merged_pdf_{order.id}.pdf"
+        )
+
+        try:
+            merger.write(output_name)
+        except PdfReadError:
+            content = {"error": "error reading PDF file"}
+            return Response(content, status=status.HTTP_400_BAD_REQUEST)
+
+        merger.close()
+
+        for f in pdf_files:
+            f.is_merged = True
+            f.save()
+
+        order.is_completed = True
+        order.download_url = output_name
+        order.save()
+
         content = {
-            "error": "this order has already been completed. Download merged PDF or make a new order."
+            "success": "files merged successfully. Use download link to download the merged PDF file."
         }
-        return Response(content, status=status.HTTP_400_BAD_REQUEST)
-
-    pdf_files = PdfFile.objects.filter(order=order)
-
-    if pdf_files.count() < 2:
-        content = {
-            "error": "not enough PDFs to merge. Please make sure you have added at least 2 PDF files."
-        }
-        return Response(content, status=status.HTTP_400_BAD_REQUEST)
-
-    merger = PdfMerger()
-    for f in pdf_files:
-        merger.append(f.file)
-
-    output_name = os.path.join(
-        settings.MEDIA_ROOT, f"merged_pdfs/merged_pdf_{order.id}.pdf"
-    )
-
-    try:
-        merger.write(output_name)
-    except PdfReadError:
-        content = {"error": "error reading PDF file"}
-        return Response(content, status=status.HTTP_400_BAD_REQUEST)
-
-    merger.close()
-
-    for f in pdf_files:
-        f.is_merged = True
-        f.save()
-
-    order.is_completed = True
-    order.download_url = output_name
-    order.save()
-
-    content = {
-        "success": "files merged successfully. Use download link to download the merged PDF file"
-    }
-    return Response(content, status=status.HTTP_201_CREATED)
+        return Response(content, status=status.HTTP_201_CREATED)
 
 
-@api_view(["GET"])
-def downlaod_merged_pdf(request, id):
-    try:
-        order = Order.objects.get(id=id)
-    except Order.DoesNotExist:
-        content = {"error": "order does not exist"}
-        return Response(content, status=status.HTTP_404_NOT_FOUND)
+class OrderDownload(APIView):
+    """Returns download link of an already merged order"""
 
-    if not order.is_completed:
-        content = {"error": "order has not been merged yet"}
-        return Response(content, status=status.HTTP_400_BAD_REQUEST)
+    permission_classes = [IsAuthenticated, IsOwner]
 
-    if order.is_archived:
-        content = {
-            "error": "order has already been downloaded and archived. Please create a new order"
-        }
-        return Response(content, status=status.HTTP_400_BAD_REQUEST)
+    def get(self, request, *args, **kwargs):
+        order = get_object_or_404(Order, pk=self.kwargs["pk"])
+        obj = order
+        self.check_object_permissions(self.request, obj)
 
-    order.is_archived = True
-    order.save()
+        if not order.is_completed:
+            content = {"error": "order has not been merged yet"}
+            return Response(content, status=status.HTTP_400_BAD_REQUEST)
 
-    content = {"download_url": order.download_url}
-    return Response(content, status=status.HTTP_200_OK)
+        if order.is_archived:
+            content = {
+                "error": "order has already been downloaded and archived. Please create a new order."
+            }
+            return Response(content, status=status.HTTP_400_BAD_REQUEST)
+
+        order.is_archived = True
+        order.save()
+
+        content = {"download_url": order.download_url}
+        return Response(content, status=status.HTTP_200_OK)

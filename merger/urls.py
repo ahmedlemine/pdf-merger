@@ -12,9 +12,11 @@ urlpatterns = [
         views.OrderFilesCreate.as_view(),
         name="order-files-create",
     ),
-    path("orders/<uuid:id>/merge/", views.merge_order_files, name="order-merge"),
+    path("orders/<uuid:pk>/merge/", views.OrderMerge.as_view(), name="order-merge"),
     path(
-        "orders/<uuid:id>/download/", views.downlaod_merged_pdf, name="order-download"
+        "orders/<uuid:pk>/download/",
+        views.OrderDownload.as_view(),
+        name="order-download",
     ),
     path("files/<uuid:pk>/delete/", views.FileDelete.as_view(), name="files-delete"),
 ]
