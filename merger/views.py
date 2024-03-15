@@ -1,8 +1,3 @@
-import os
-
-from PyPDF2 import PdfMerger
-from PyPDF2.errors import PdfReadError
-
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 
@@ -14,7 +9,10 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.views import APIView
 from rest_framework.mixins import CreateModelMixin
 
+from rest_framework.exceptions import APIException
 
+
+from .utils import merge_pdf_files
 from .permissions import IsOwner, IsParentOwner
 from .models import Order, PdfFile
 from .serializers import OrderSerializer, PdfFileSerializer
@@ -52,25 +50,25 @@ class OrderDetail(generics.RetrieveDestroyAPIView):
 class OrderFilesList(generics.ListAPIView):
     """List all files under order that belongs to the currently authenticated user"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwner]
     serializer_class = PdfFileSerializer
 
     def get_queryset(self):
-        user = self.request.user
         order = get_object_or_404(Order, pk=self.kwargs["pk"])
-        if order.user != user:
-            raise PermissionDenied
+        self.check_object_permissions(self.request, order)
+        user = self.request.user
         return PdfFile.objects.filter(order=order, order__user=user)
 
 
 class OrderFilesCreate(GenericAPIView, CreateModelMixin):
     """Create (add) files for the order specified by its id"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwner]
     serializer_class = PdfFileSerializer
 
     def post(self, request, *args, **kwargs):
         order = get_object_or_404(Order, id=self.kwargs["pk"])
+        self.check_object_permissions(self.request, order)
 
         if order.pdf_files.count() >= settings.MAX_MERGED_FILES_LIMIT:
             content = {"error": "you have reached the max files allowed in one merge."}
@@ -108,14 +106,14 @@ class OrderMerge(APIView):
 
     permission_classes = [IsAuthenticated, IsOwner]
 
-    def get(self, request, *args, **kwargs):
+    def get(self, request, pk):
         order = get_object_or_404(Order, pk=self.kwargs["pk"])
         obj = order
         self.check_object_permissions(self.request, obj)
 
         if order.is_completed:
             content = {
-                "error": "this order has already been completed. Download merged PDF or make a new order."
+                "error": "this order has already been merged. Download merged PDF or make a new order."
             }
             return Response(content, status=status.HTTP_400_BAD_REQUEST)
 
@@ -127,34 +125,24 @@ class OrderMerge(APIView):
             }
             return Response(content, status=status.HTTP_400_BAD_REQUEST)
 
-        merger = PdfMerger()
-        for f in pdf_files:
-            merger.append(f.file)
+        merged_path = merge_pdf_files(pdf_files)
+        
+        if merged_path is not None:
+            for f in pdf_files:
+                f.is_merged = True
+                f.save()
 
-        output_name = os.path.join(
-            settings.MEDIA_ROOT, f"merged_pdfs/merged_pdf_{order.id}.pdf"
-        )
+            order.is_completed = True
+            order.download_url = merged_path
+            order.save()
 
-        try:
-            merger.write(output_name)
-        except PdfReadError:
-            content = {"error": "error reading PDF file"}
-            return Response(content, status=status.HTTP_400_BAD_REQUEST)
+            content = {
+                "success": "files merged successfully. Use download link to download the merged PDF file."
+            }
+            return Response(content, status=status.HTTP_201_CREATED)
 
-        merger.close()
-
-        for f in pdf_files:
-            f.is_merged = True
-            f.save()
-
-        order.is_completed = True
-        order.download_url = output_name
-        order.save()
-
-        content = {
-            "success": "files merged successfully. Use download link to download the merged PDF file."
-        }
-        return Response(content, status=status.HTTP_201_CREATED)
+        content = {"error": "error merging PDF files"}
+        return Response(content, status=status.HTTP_400_BAD_REQUEST)
 
 
 class OrderDownload(APIView):
@@ -162,13 +150,13 @@ class OrderDownload(APIView):
 
     permission_classes = [IsAuthenticated, IsOwner]
 
-    def get(self, request, *args, **kwargs):
+    def get(self, request, pk):
         order = get_object_or_404(Order, pk=self.kwargs["pk"])
         obj = order
         self.check_object_permissions(self.request, obj)
 
         if not order.is_completed:
-            content = {"error": "order has not been merged yet"}
+            content = {"error": "order has not been merged yet."}
             return Response(content, status=status.HTTP_400_BAD_REQUEST)
 
         if order.is_archived:
