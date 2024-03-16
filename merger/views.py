@@ -63,12 +63,14 @@ class OrderFilesList(generics.ListAPIView):
 class OrderFilesCreate(GenericAPIView, CreateModelMixin):
     """Create (add) files for the order specified by its id"""
 
-    permission_classes = [IsAuthenticated, IsOwner]
+    permission_classes = [IsAuthenticated]
     serializer_class = PdfFileSerializer
 
     def post(self, request, *args, **kwargs):
         order = get_object_or_404(Order, id=self.kwargs["pk"])
-        self.check_object_permissions(self.request, order)
+        user = self.request.user
+        if order.user != user:
+            raise PermissionDenied
 
         if order.pdf_files.count() >= settings.MAX_MERGED_FILES_LIMIT:
             content = {"error": "you have reached the max files allowed in one merge."}
