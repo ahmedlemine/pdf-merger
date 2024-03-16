@@ -9,8 +9,6 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.views import APIView
 from rest_framework.mixins import CreateModelMixin
 
-from rest_framework.exceptions import APIException
-
 
 from .utils import merge_pdf_files
 from .permissions import IsOwner, IsParentOwner
@@ -128,7 +126,7 @@ class OrderMerge(APIView):
             return Response(content, status=status.HTTP_400_BAD_REQUEST)
 
         merged_path = merge_pdf_files(pdf_files)
-        
+
         if merged_path is not None:
             for f in pdf_files:
                 f.is_merged = True
