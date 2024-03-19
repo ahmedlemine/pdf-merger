@@ -8,9 +8,9 @@ from .exceptions import MergeException
 
 
 def merge_pdf_files(pdf_files):
-    ''' merge a list of pdf files using PyPDF2 and returns the path
-        for the merged PDF file.
-    '''
+    """merge a list of pdf files using PyPDF2 and returns the path
+    for the merged PDF file.
+    """
     merger = PdfMerger()
     for f in pdf_files:
         try:

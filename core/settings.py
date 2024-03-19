@@ -143,3 +143,6 @@ MAX_PDF_FILE_SIZE = 2097152
 
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+
+AUTH_USER_MODEL = "accounts.CustomUser"
