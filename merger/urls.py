@@ -4,6 +4,7 @@ from . import views
 app_name = "merger"
 
 urlpatterns = [
+    path("", views.APIRootView.as_view(), name="api-root"),
     path("orders/", views.Orders.as_view(), name="order-list"),
     path("orders/<uuid:pk>/", views.OrderDetail.as_view(), name="order-detail"),
     path("orders/<uuid:pk>/files/", views.OrderFilesList.as_view(), name="order-files"),

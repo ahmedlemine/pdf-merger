@@ -8,12 +8,21 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import GenericAPIView
 from rest_framework.views import APIView
 from rest_framework.mixins import CreateModelMixin
+from rest_framework.reverse import reverse_lazy
 
 
 from .utils import merge_pdf_files
 from .permissions import IsOwner, IsParentOwner
 from .models import Order, PdfFile
 from .serializers import OrderSerializer, PdfFileSerializer
+
+
+class APIRootView(APIView):
+    def get(self, request):
+        data = {
+            "orders": reverse_lazy("merger:order-list", request=request),
+        }
+        return Response(data)
 
 
 class Orders(generics.ListCreateAPIView):
