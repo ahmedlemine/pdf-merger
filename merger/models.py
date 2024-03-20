@@ -2,19 +2,19 @@ import uuid
 
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 
 class Order(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
-    date_created = models.DateTimeField(auto_now=True)
-    is_completed = models.BooleanField(default=False)
+    created_on = models.DateTimeField(auto_now_add=True)
+    is_merged = models.BooleanField(default=False)
     download_url = models.CharField(max_length=250, blank=True, null=True)
-    is_downloaded = models.BooleanField(default=False)
-    is_archived = models.BooleanField(default=False)
-
+    download_count = models.PositiveIntegerField(default=0)
+    
     class Meta:
-        ordering = ["-date_created"]
+        ordering = ["-created_on"]
 
     def __str__(self):
         return str(self.id)

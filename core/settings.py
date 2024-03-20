@@ -140,6 +140,10 @@ MEDIA_URL = "media/"
 # PDF merger settings
 MAX_MERGED_FILES_LIMIT = 5
 MAX_PDF_FILE_SIZE = 2097152
+# max time order is kept for download before deleting it from server (in hours)
+# counting from creation time:
+MAX_TIME_ALLOWED_FOR_DOWNLOAD = 1  # hour(s)
+MAX_ORDER_DOWNLOADS = 3
 
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

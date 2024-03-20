@@ -10,7 +10,7 @@ class PdfFileInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "date_created", "is_completed", "is_downloaded")
+    list_display = ("id", "user", "created_on", "is_merged", "download_count")
 
     inlines = [PdfFileInline]
 

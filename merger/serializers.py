@@ -57,21 +57,19 @@ class OrderSerializer(serializers.ModelSerializer):
         depth = 1
         fields = [
             "id",
-            "date_created",
-            "is_completed",
+            "created_on",
+            "is_merged",
             "download_url",
-            "is_downloaded",
-            "is_archived",
+            "download_count",
             "user",
             "pdf_files",
         ]
         read_only_fields = [
             "id",
-            "date_created",
-            "is_completed",
+            "created_on",
+            "is_merged",
             "download_url",
-            "is_downloaded",
-            "is_archived",
+            "download_count",
             "user",
             "pdf_files",
         ]

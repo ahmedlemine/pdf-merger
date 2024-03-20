@@ -1,5 +1,8 @@
+from datetime import datetime, timedelta
+
 from django.conf import settings
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -83,9 +86,9 @@ class OrderFilesCreate(GenericAPIView, CreateModelMixin):
             content = {"error": "you have reached the max files allowed in one merge."}
             return Response(content, status=status.HTTP_400_BAD_REQUEST)
 
-        if order.is_completed:
+        if order.is_merged:
             content = {
-                "error": "merge has already been completed and archived. Please create a new order."
+                "error": "Merge has already been merged and archived. Please create a new order."
             }
             return Response(content, status=status.HTTP_400_BAD_REQUEST)
 
@@ -120,9 +123,9 @@ class OrderMerge(APIView):
         obj = order
         self.check_object_permissions(self.request, obj)
 
-        if order.is_completed:
+        if order.is_merged:
             content = {
-                "error": "this order has already been merged. Download merged PDF or make a new order."
+                "error": "This order has already been merged. Download merged PDF or make a new order."
             }
             return Response(content, status=status.HTTP_400_BAD_REQUEST)
 
@@ -130,7 +133,7 @@ class OrderMerge(APIView):
 
         if pdf_files.count() < 2:
             content = {
-                "error": "not enough PDFs to merge. Please make sure you have added at least 2 PDF files to merge."
+                "error": "Not enough PDFs to merge. Please make sure you have added at least 2 PDF files to merge."
             }
             return Response(content, status=status.HTTP_400_BAD_REQUEST)
 
@@ -141,16 +144,16 @@ class OrderMerge(APIView):
                 f.is_merged = True
                 f.save()
 
-            order.is_completed = True
+            order.is_merged = True
             order.download_url = merged_path
             order.save()
 
             content = {
-                "success": "files merged successfully. Use download link to download the merged PDF file."
+                "success": "Files merged successfully. Use download link to download the merged PDF file."
             }
             return Response(content, status=status.HTTP_201_CREATED)
 
-        content = {"error": "error merging PDF files"}
+        content = {"error": "Error merging PDF files"}
         return Response(content, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -164,17 +167,26 @@ class OrderDownload(APIView):
         obj = order
         self.check_object_permissions(self.request, obj)
 
-        if not order.is_completed:
-            content = {"error": "order has not been merged yet."}
-            return Response(content, status=status.HTTP_400_BAD_REQUEST)
+        time_delta = timezone.now().date() - order.created_on.date()
+        time_since = time_delta.total_seconds() / (60 * 60)
 
-        if order.is_archived:
+        if time_since > settings.MAX_TIME_ALLOWED_FOR_DOWNLOAD:
             content = {
-                "error": "order has already been downloaded and archived. Please create a new order."
+                "error": "Order reached allowed time on server and is set to be deleted. Please create a new order."
             }
             return Response(content, status=status.HTTP_400_BAD_REQUEST)
 
-        order.is_archived = True
+        if not order.is_merged:
+            content = {"error": "order has not been merged yet."}
+            return Response(content, status=status.HTTP_400_BAD_REQUEST)
+
+        if order.download_count >= settings.MAX_ORDER_DOWNLOADS:
+            content = {
+                "error": "Order reached maximum allowed downloads and is set to be deleted. Please create a new order."
+            }
+            return Response(content, status=status.HTTP_400_BAD_REQUEST)
+
+        order.download_count += 1
         order.save()
 
         content = {"download_url": order.download_url}
