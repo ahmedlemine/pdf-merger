@@ -8,6 +8,7 @@ from django.utils import timezone
 class Order(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+    name = models.CharField(max_length=100, blank=True, null=True)
     created_on = models.DateTimeField(auto_now_add=True)
     is_merged = models.BooleanField(default=False)
     download_url = models.CharField(max_length=250, blank=True, null=True)

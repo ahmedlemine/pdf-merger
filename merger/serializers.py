@@ -57,6 +57,7 @@ class OrderSerializer(serializers.ModelSerializer):
         depth = 1
         fields = [
             "id",
+            "name",
             "created_on",
             "is_merged",
             "download_url",
