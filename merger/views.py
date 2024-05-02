@@ -149,7 +149,7 @@ class OrderMerge(APIView):
             order.save()
 
             content = {
-                "success": "Files merged successfully. Use download link to download the merged PDF file."
+                "download_url": merged_path
             }
             return Response(content, status=status.HTTP_201_CREATED)
 
