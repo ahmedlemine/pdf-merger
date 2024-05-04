@@ -149,7 +149,7 @@ class OrderMerge(APIView):
             order.save()
 
             content = {
-                "download_url": merged_path
+                "download_url": order.get_download_url()
             }
             return Response(content, status=status.HTTP_201_CREATED)
 

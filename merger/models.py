@@ -3,6 +3,7 @@ import uuid
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.urls import reverse
 
 
 class Order(models.Model):
@@ -21,10 +22,15 @@ class Order(models.Model):
         return str(self.id)
 
 
+    def get_download_url(self):
+        return reverse('merger:order-download', kwargs={'pk': self.pk})
+    
+    
 class PdfFile(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="pdf_files")
     file = models.FileField(upload_to="pdf_uploads")
+    original_name = models.CharField(max_length=100, editable=False)
     date_uploaded = models.DateTimeField(auto_now=True, editable=False)
     is_merged = models.BooleanField(default=False)
 
