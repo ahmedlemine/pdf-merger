@@ -25,9 +25,16 @@ class PdfFileSerializer(serializers.ModelSerializer):
             "order",
             "is_merged",
             "date_uploaded",
-            "original_file_name"
+            "original_name"
         ]
-        
+
+
+    def create(self, validated_data):
+        file = validated_data.get('file')
+        file_name = file.name
+        validated_data['original_name'] = file_name
+        return super().create(validated_data)
+
 
     def validate_file(self, file):
         if file.content_type != "application/pdf":
@@ -50,10 +57,6 @@ class PdfFileSerializer(serializers.ModelSerializer):
         return file
 
 
-    def create(self, validated_data):
-        file_name = validated_data.get('file').name
-        validated_data['original_name'] = file_name
-        return PdfFile.objects.create(**validated_data)
 
 
 class OrderSerializer(serializers.ModelSerializer):
