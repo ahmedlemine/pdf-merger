@@ -1,17 +1,20 @@
 import os
 import uuid
-from PyPDF2 import PdfMerger
-from PyPDF2.errors import PdfReadError, PyPdfError
+
+from pypdf import PdfWriter
+from pypdf.errors import PdfReadError, PyPdfError
 from django.conf import settings
 
 from .exceptions import MergeException
 
 
 def merge_pdf_files(pdf_files):
-    """merge a list of pdf files using PyPDF2 and returns the path
-    for the merged PDF file.
     """
-    merger = PdfMerger()
+    merges a list of pdf files using pypdf and returns the path
+    for the merged PDF file.
+    :param list pdf_files: a list of PDF files to merge.
+    """
+    merger = PdfWriter()
     for f in pdf_files:
         try:
             merger.append(f.file)
