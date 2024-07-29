@@ -1,6 +1,22 @@
-## PDF Merger
+# PDF Merger
 A REST API built in Django and Django Rest Framework to allow users to merge PDF files. It uses PyPDF library for merging PDFs returnin a single downloadable PDF file.
 
+## Getting Started
+Create a virtual environment
+
+```
+python -m venv venv
+```
+
+Activate the virtual environment
+
+Install the necessary packages mentioned in the requirements.txt
+
+```
+pip install -r requirements.txt
+```
+
+## Front-end
 I have built a [frontend](https://github.com/ahmedlemine/pdfmerger-frontend) SPA for this backend using React.js. 
 
 For a deatiled overview of the APP (backend & forntend), please refer to this [blog post](https://pybit.es/articles/from-python-script-to-web-app-and-product/) I published on the Pybites blog.
