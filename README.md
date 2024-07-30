@@ -52,3 +52,69 @@ as well as some other useful endpoints for changing and resetting passwords.
 - for now the frontend allows the user to list all his past merges, delete them, or download them instead of merging them again. However the API is built so that the merge is archived after either max download times or time since created (both can be set in settings.py) otherwise users can use your app as a free cloud by uploading files, merging them, then sharing the download link. Ideally I'd like to setup a cron job and a management command to automate deleting archived orders and a related PDF files to save space on server.
 - adding tests both for backend and frontend.
 - adding documentation for the API.
+
+
+## How to run dev server:
+
+1- Clone repo and cd into its folder:
+
+```
+git clone https://github.com/ahmedlemine/pdf-merger.git
+cd pdf-merger/
+```
+
+2- Create a virtual environment:
+
+```
+python3 -m venv venv
+```
+
+3- Activate virtual env:
+
+```
+source venv/bin/activate
+```
+
+4- Install requirements
+
+```
+pip install -r requirements.txt
+```
+
+5- Create a ".env" file using example.env as a template to create your own ".env" file, or just rename "example.env" to ".env"
+
+```
+mv example.env .env
+```
+
+6- Migrate:
+
+```
+python3 manage.py migrate
+```
+
+7- Create suepr user:
+
+```
+python3 manage.py createsuperuser
+```
+
+8- Run server
+
+```
+python3 manage.py runserver
+```
+
+
+## Run with Docker:
+You can this part of the app (backend) useing Docker by running:
+```
+docker-compose up
+```
+
+depending on you Docker and docker-compose version, you may need to use this command instead:
+```
+docker compose up
+```
+
+You can also run the frontend using Docker and docker-compose.

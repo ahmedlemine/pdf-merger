@@ -1,20 +1,28 @@
+import environ
+import os
 from pathlib import Path
 from datetime import timedelta
 
+# django-environ set casting, default value
+env = environ.Env(DEBUG=(bool, False))
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Take environment variables from .env file
+environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-o8=-ry)hjj2_(r(qnyxtzunn&&j!hlfq7=pus1j+f)z!ue3aro"
+SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env('DEBUG')
 
-ALLOWED_HOSTS = ['localhost', '0.0.0.0']
+ALLOWED_HOSTS = ["localhost", "0.0.0.0", "192.168.10.71"]
 
 
 # Application definition
@@ -155,5 +163,5 @@ AUTH_USER_MODEL = "accounts.CustomUser"
 
 
 CORS_ALLOW_ALL_ORIGINS = True
-CORS_ORIGIN_WHITELIST = ("http://localhost:3000",)
-CSRF_TRUSTED_ORIGINS = ["http://localhost:3000"]
+CORS_ORIGIN_WHITELIST = (env('CORS_ORIGIN_WHITELIST'),)
+CSRF_TRUSTED_ORIGINS = [env('CSRF_TRUSTED_ORIGINS')]
