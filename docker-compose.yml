@@ -1,11 +1,11 @@
 services:
   app:
+    container_name: merger_backend
     build: .
+    restart: always
+    env_file: .env
     user: 1000:1000
-    command: python3 /app/manage.py runserver 0.0.0.0:8000
-    environment:
-      - SECRET_KEY=nl!kp$h8m%)g%!$kjb7i+fjoa-qdhb$r(g9bafgmnx(a+_)+tq
-      - DEBUG=1
+    command: sh -c "gunicorn core.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - .:/app
     ports:
