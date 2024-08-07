@@ -22,7 +22,7 @@ SECRET_KEY = env('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env('DEBUG')
 
-ALLOWED_HOSTS = ["localhost", "0.0.0.0", "192.168.10.71"]
+ALLOWED_HOSTS = ["localhost", "0.0.0.0"]
 
 
 # Application definition
@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "djoser",
+    "drf_spectacular",
     # local
     "accounts.apps.AccountsConfig",
     "merger.apps.MergerConfig",
@@ -124,6 +125,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 SIMPLE_JWT = {
@@ -165,3 +167,10 @@ AUTH_USER_MODEL = "accounts.CustomUser"
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ORIGIN_WHITELIST = (env('CORS_ORIGIN_WHITELIST'),)
 CSRF_TRUSTED_ORIGINS = [env('CSRF_TRUSTED_ORIGINS')]
+
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "PDF Merger API",
+    "DESCRIPTION": "An API to merge PDF files",
+    "VERSION": "1.0.0",
+}
