@@ -93,7 +93,7 @@ mv example.env .env
 python3 manage.py migrate
 ```
 
-7- Create suepr user:
+7- Create super user:
 
 ```
 python3 manage.py createsuperuser
